@@ -10,6 +10,7 @@ use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Validator\Constraints\Image;
 
 class ContactType extends AbstractType
 {
@@ -57,14 +58,22 @@ class ContactType extends AbstractType
             'label' => 'E-mail',
             'attr' => ['class' => 'form-control']
         ])
-        ->add('picture', FileType::class, [
+        ->add('pictureFile', FileType::class, [
+            // we are storing picture as string (picture name), we will get an error on form rendering if we leave it as string.
+            // We need file type to render on edit form
+            'mapped' => false,
             'label' => 'Picture',
             'attr' => ['class' => 'form-control-file'],
-            'required' => false
+            'required' => false,
+            'constraints' => [
+                new Image([
+                    'maxSize' => '2M' // php.ini max upload file size is 2M default
+                ])
+            ]
         ])
         ->add('submit', SubmitType::class, [
             'label' => 'Create Contact',
-            'attr' => ['class' => 'btn btn-primary']
+            'attr' => ['class' => 'btn btn-primary mt-4']
         ]);
     }
 }

@@ -387,5 +387,10 @@ class Contact
     {
         return $this->picture;
     }
+
+    public function getPicturePath(): string
+    {
+        return 'uploads/article_image/'.$this->getPicture();
+    }
 }
 

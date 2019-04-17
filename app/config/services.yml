@@ -34,6 +34,6 @@ services:
     #     arguments:
     #         $someArgument: 'some_value'
 
-    AppBundle\Services\FileUploader:
+    AppBundle\Services\UploaderHelper:
         arguments:
-            $targetDirectory: '%picture_directory%'
+            $targetDirectory: '%kernel.project_dir%/web/uploads/picture'

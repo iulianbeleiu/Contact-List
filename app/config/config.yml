@@ -40,7 +40,7 @@ twig:
 doctrine:
     dbal:
         driver: pdo_sqlite
-        path: '%kernel.project_dir%/app/contacts.db'
+        path: '%kernel.project_dir%/app/contact.db'
         charset: UTF8
 
     orm:
@@ -59,3 +59,12 @@ swiftmailer:
 sensio_framework_extra:
    router:
         annotations: false
+
+liip_imagine:
+    filter_sets:
+        squared_thumbnail_small:
+            filters:
+                thumbnail:
+                    size:          [200, 200]
+                    mode:          outbound
+                    allow_upscale: true

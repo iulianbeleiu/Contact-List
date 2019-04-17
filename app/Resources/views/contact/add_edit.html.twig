@@ -1,12 +1,10 @@
 {% include 'base.html.twig' %}
 
 {% block body %}
-
     <div class="container-fluid mt-4 mb-4 col-8">
-
+        <a href="{{ path('contact_list') }}" class="btn btn-outline-primary mb-2">Back to contact list</a>
         <h3>Add a new contact</h3>
-        {#{{ form_start(contactForm, {attr: {class: 'mt-4', 'novalidate': 'novalidate'}}) }}#}
-        {{ form_start(contactForm, {attr: {class: 'mt-4', enctype: "multipart/form-data"}}) }}
+        {{ form_start(contactForm) }}
             <div class="form-group">
                 {{ form_label(contactForm.firstName) }}
                 {{ form_widget(contactForm.firstName) }}
@@ -17,7 +15,6 @@
                 {{ form_widget(contactForm.lastName) }}
                 {{ form_errors(contactForm.lastName) }}
             </div>
-
             <div class="form-group">
                 <div class="row">
                     <div class="col-6">
@@ -37,7 +34,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="form-group">
                 <div class="row">
                     <div class="col-6">
@@ -52,7 +48,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="form-group">
                 <div class="row">
                     <div class="col-6">
@@ -67,29 +62,26 @@
                     </div>
                 </div>
             </div>
-
             <div class="form-group">
                 {{ form_label(contactForm.email) }}
                 {{ form_widget(contactForm.email) }}
                 {{ form_errors(contactForm.email) }}
             </div>
-        
-            {% if picturePath %}
-                <img src="{{ asset(picturePath) }}">
+
+            {% if contactForm.vars.data.picture %}
+                <a href="{{ asset(pictureBasePath ~ contactForm.vars.data.picture) }}">
+                    <img class="article-img" src="{{ asset(pictureBasePath ~ contactForm.vars.data.picture)|imagine_filter('squared_thumbnail_small') }}">
+                </a>
             {% endif %}
-
             <div class="form-group">
-                {{ form_label(contactForm.picture) }}
-                {{ form_widget(contactForm.picture) }}
-                {{ form_errors(contactForm.picture) }}
+                {{ form_label(contactForm.pictureFile) }}
+                {{ form_widget(contactForm.pictureFile) }}
+                {{ form_errors(contactForm.pictureFile) }}
             </div>
-
             <div class="form-group">
                 {{ form_label(contactForm.submit) }}
                 {{ form_widget(contactForm.submit) }}
             </div>
         {{ form_end(contactForm) }}
-
     </div>
-
 {% endblock %}

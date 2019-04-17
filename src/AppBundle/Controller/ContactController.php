@@ -10,11 +10,11 @@ namespace AppBundle\Controller;
 
 
 use AppBundle\Form\ContactType;
-use AppBundle\Services\FileUploader;
+use AppBundle\Services\UploaderHelper;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use AppBundle\Entity\Contact;
-use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\HttpFoundation\File\Exception\UploadException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -23,72 +23,93 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 class ContactController extends Controller
 {
     /**
-     * @Route("/contacts", name="contact_list")
+     * @Route("/", name="contact_list")
      */
     public function contactListAction()
     {
-        $contacts = $this->getDoctrine()
-            ->getRepository(Contact::class)
-            ->findAll();
+        $contacts = [];
+        try {
+            $contacts = $this->getDoctrine()
+                ->getRepository(Contact::class)
+                ->findAll();
+        } catch (\Exception $exception) {
+            $this->addFlash('error', 'Could not get the contacts.');
+        }
 
         return $this->render('contact/list.html.twig', [
-            'contacts' => $contacts
+            'contacts' => $contacts,
+            'pictureBasePath' => UploaderHelper::PICTURE_UPLOAD_PATH
         ]);
     }
 
     /**
      * @Route("/contact/edit/{id}", name="contact_edit")
      * @param Request $request
-     * @param Contact $contact
-     * @return Response
+     * @param $id
+     * @param UploaderHelper $fileUploader
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse|Response
      */
-    public function contactEditAction(Request $request, Contact $contact = null, FileUploader $fileUploader)
+    public function contactEditAction(Request $request, $id, UploaderHelper $fileUploader)
     {
+        try {
+            $contact = $this->getDoctrine()
+                ->getRepository(Contact::class)
+                ->find($id);
+        } catch (\Exception $exception) {
+            $this->addFlash('error', 'Could not get the requested contact.');
+            return $this->redirectToRoute('contact_list');
+        }
+
         if (!$contact) {
-            throw $this->createNotFoundException('Contact not found.');
+            $this->addFlash('error', 'Contact not found.');
+            return $this->redirectToRoute('contact_list');
         }
 
-        $picturePath = null;
-        if (!is_null($contact->getPicture())) {
-            $contact->setPicture(
-                new File($contact->getPicture())
-            );
-
-            $picturePath = $contact->getPicture();
-        }
-
+        // populate edit form with contact data
         $form = $this->createForm(ContactType::class, $contact);
 
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $contact = $form->getData();
+            try {
+                $contact = $form->getData();
 
-            /** @var UploadedFile $picture */
-            $picture = $contact->getPicture();
-            $pictureName = $fileUploader->uploadFile($picture);
+                $entityManager = $this->getDoctrine()->getManager();
+                $entityManager->persist($contact);
+                $entityManager->flush();
 
-            $contact->setPicture($pictureName);
+                /** @var UploadedFile $picture */
+                $picture = $form['pictureFile']->getData();
+                if ($picture) {
+                    $pictureName = $fileUploader->uploadFile($picture);
 
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager->persist($contact);
-            $entityManager->flush();
+                    // add the image only if the upload is successful
+                    // and contact was edited successfully
+                    $contact->setPicture($pictureName);
+                    $entityManager->flush();
+                }
 
-            return $this->redirectToRoute('contact_list');
+                $this->addFlash('success', 'Contact updated.');
+            } catch (UploadException $uploadException) {
+                $this->addFlash('warning', $uploadException->getMessage());
+            } catch (\Exception $exception) {
+                $this->addFlash('error', 'Unable to process picture upload.');
+            }
         }
 
-        return $this->render('contact/add.html.twig', [
+        return $this->render('contact/add_edit.html.twig', [
             'contactForm' => $form->createView(),
-            'picturePath' => $picturePath
+            'pictureBasePath' => UploaderHelper::PICTURE_UPLOAD_PATH
         ]);
     }
 
     /**
      * @Route("/contact/add", name="contact_add")
      * @param Request $request
-     * @return Response
+     * @param UploaderHelper $fileUploader
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse|Response
      */
-    public function contactAddAction(Request $request, FileUploader $fileUploader)
+    public function contactAddAction(Request $request, UploaderHelper $fileUploader)
     {
         $contact = new Contact();
         $form = $this->createForm(ContactType::class, $contact);
@@ -96,21 +117,35 @@ class ContactController extends Controller
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $contact = $form->getData();
+            try {
+                $contact = $form->getData();
 
-            $picture = $contact->getPicture();
-            $pictureName = $fileUploader->uploadFile($picture);
+                $entityManager = $this->getDoctrine()->getManager();
+                $entityManager->persist($contact);
+                $entityManager->flush();
 
-            $contact->setPicture($pictureName);
+                /** @var UploadedFile $picture */
+                $picture = $form['pictureFile']->getData();
+                if ($picture) {
+                    $pictureName = $fileUploader->uploadFile($picture);
 
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager->persist($contact);
-            $entityManager->flush();
+                    // add the image only if the upload is successful
+                    // and contact was added successfully
+                    $contact->setPicture($pictureName);
+                    $entityManager->flush();
+                }
+
+                $this->addFlash('success', 'Contact added.');
+            } catch (UploadException $uploadException) {
+                $this->addFlash('warning', 'Picture Upload failed.');
+            } catch (\Exception $exception) {
+                $this->addFlash('error', 'Unable to process picture upload.');
+            }
 
             return $this->redirectToRoute('contact_list');
         }
 
-        return $this->render('contact/add.html.twig', [
+        return $this->render('contact/add_edit.html.twig', [
             'contactForm' => $form->createView()
         ]);
     }
@@ -118,25 +153,23 @@ class ContactController extends Controller
     /**
      * @Route("/contact/delete/{id}", name="contact_delete")
      */
-    public function contactDeleteAction(Contact $contact = null)
+    public function contactDeleteAction($id)
     {
-        $entityManager = $this->getDoctrine()->getManager();
+        try {
+            $entityManager = $this->getDoctrine()->getManager();
 
-        if (!$contact) {
-            throw $this->createNotFoundException('Contact not found.');
+            $contact = $this->getDoctrine()
+                ->getRepository(Contact::class)
+                ->find($id);
+
+            $entityManager->remove($contact);
+            $entityManager->flush();
+
+            $this->addFlash('success', 'Contact deleted.');
+        } catch (\Exception $exception) {
+            $this->addFlash('error', 'Contact could not be deleted');
         }
 
-        $entityManager->remove($contact);
-        $entityManager->flush();
-
         return $this->redirectToRoute('contact_list');
-    }
-
-    /**
-     * @return string
-     */
-    private function generateUniqueFileName()
-    {
-        return md5(uniqid());
     }
 }
