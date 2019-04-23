@@ -6,7 +6,7 @@ Controller
  - ContactController containing the route / to list the contacts, Add, Edit and Delete actions
  
 Entity
- - Contact endity which contains the contact table definition and Assertions for form validation
+ - Contact entity which contains the contact table definition and Assertions for form validation
  
 Form
  - ContactType is building the contact form with related fileds. Here I added the Image validation
